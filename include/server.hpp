@@ -1,4 +1,4 @@
-// Copyright 2021 Mukaev Rinat <rinamuka4@gmail.com>
+// Copyright 2020 BoryaBes <box.bern@yandex.ru>
 
 #ifndef INCLUDE_SERVER_HPP_
 #define INCLUDE_SERVER_HPP_
@@ -15,10 +15,10 @@
 #include <string>
 
 #include "prepareSuggests.hpp"
-namespace beast = boost::beast;    // from <boost/beast.hpp>
-namespace http = beast::http;      // from <boost/beast/http.hpp>
-namespace net = boost::asio;       // from <boost/asio.hpp>
-using tcp = boost::asio::ip::tcp;  // from <boost/asio/ip/tcp.hpp>
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = boost::asio::ip::tcp;
 
 
 
@@ -36,13 +36,13 @@ private:
     preparerSug& sugObj_;
     beast::flat_buffer buffer_{8192};
 
-    http::request<http::string_body> request_; //принимает данные запроса от клиента, заголовки,тело
+    http::request<http::string_body> request_;
 
-    http::response<http::string_body> response_; //в респонс записываем ответ сервера
+    http::response<http::string_body> response_;
 
-    net::steady_timer deadline_{socket_.get_executor(), std::chrono::seconds(60)};//сколько времени ждем время ответа клиента
+    net::steady_timer deadline_{socket_.get_executor(), std::chrono::seconds(60)};
 
-    void read_request() { //чтение запроса
+    void read_request() {
         auto self = shared_from_this();
 
         http::async_read(
@@ -53,39 +53,39 @@ private:
                 });
     }
 
-    void process_request() { //обработка запроса клиента
+    void process_request() {
         response_.version(request_.version());
         response_.keep_alive(false);
         switch (request_.method()) {
-            case http::verb::post: //если запрос использует метод пост то начинаю писать заголовки
-                response_.result(http::status::ok); //код ответа 200
-                response_.set(http::field::server, "Beast");//пишу заголовок в сервер - бист
+            case http::verb::post:
+                response_.result(http::status::ok);
+                response_.set(http::field::server, "Beast");
 
                 create_response(); //вызов ф-ии создание ответа
                 break;
 
-            default: //если запрос не пост, то отправляю код бэдреквест,код 400
+            default:
                 response_.result(http::status::bad_request);
-                response_.set(http::field::content_type, "text/plain"); //тип тела ответа будет текст
+                response_.set(http::field::content_type, "text/plain");
                 response_.body() = "Invalid request-method '" +
-                                   std::string(request_.method_string()) + "'"; //записываю что отправляю в ответ(строку в ковычках),читаю метод из пер-ой реквест и вывожу название метода
+                                   std::string(request_.method_string()) + "'";
                 break;
         }
 
-        write_response(); //вызываю метод ответа(отправляю ответ)
+        write_response();
     }
 
-    void create_response() { //метод создания ответа
-        if (request_.target() == "/v1/api/suggest") {//таргет это ЮРАЙ на который клиент делает запрос, если он обратился правильно
-            response_.set(http::field::content_type, "application/json"); //устанавливаю заголовок контекттайп и указываю что буду передавать данные типа джисон
-            response_.body() = sugObj_.getSuggestions(request_.body()).dump(4);//устанавливаю тело ответа(вызов метода гет соджешенс)
+    void create_response() {
+        if (request_.target() == "/v1/api/suggest") {
+            response_.set(http::field::content_type, "application/json");
+            response_.body() = sugObj_.getSuggestions(request_.body()).dump(4);
         } else {
             response_.result(http::status::not_found);
             response_.set(http::field::content_type, "text/plain");
         }
     }
 
-    void write_response() { //отправляет ответ клиенту
+    void write_response() {
         auto self = shared_from_this();
 
         response_.content_length(response_.body().size());
